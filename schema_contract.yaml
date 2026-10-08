@@ -1,0 +1,50 @@
+dataset: dataset_catalog
+version: 1
+source_file: dags/extraction/sample.csv
+strict_columns: true        # extra ya missing column = DAG FAIL
+partition_column: author
+
+columns:
+  - name: dataset code
+    type: integer
+    nullable: false
+    unique: true
+  - name: dataset name
+    type: string
+    nullable: true          # trailing blank rows ki wajah se
+  - name: link
+    type: string
+    nullable: true          # kuch rows mein URL nahi hai
+  - name: description
+    type: string
+    nullable: true
+  - name: comments
+    type: string
+    nullable: true
+  - name: author
+    type: string
+    nullable: true
+    allowed_values: [urwa, david]
+  - name: is conversation like
+    type: string
+    nullable: true
+    allowed_values: [Conversational, Non-Conversational]
+  - name: AI generated
+    type: string
+    nullable: true
+    allowed_values: [Human Generated, AI generated, AI & Human generated]
+  - name: comments on relevance
+    type: string
+    nullable: true
+  - name: analysis author
+    type: string
+    nullable: true
+  - name: analysis author2
+    type: string
+    nullable: true
+  - name: analysis status
+    type: string
+    nullable: true
+  - name: analysis status2
+    type: string
+    nullable: true

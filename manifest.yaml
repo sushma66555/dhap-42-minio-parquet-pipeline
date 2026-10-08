@@ -1,0 +1,7 @@
+dataset_name: dataset_catalog
+source: dags/extraction/sample.csv
+owner: Sushma
+status: in_progress
+format: parquet
+partition_column: author
+destination: minio://dataset-catalog/dataset_catalog/

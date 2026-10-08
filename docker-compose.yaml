@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: pgsty/minio:RELEASE.2026-06-18T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: amazon/aws-cli:latest
+    depends_on:
+      - minio
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_DEFAULT_REGION: us-east-1
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        until aws --endpoint-url http://minio:9000 s3 ls; do sleep 2; done
+        aws --endpoint-url http://minio:9000 s3api head-bucket --bucket $${MINIO_BUCKET} 2>/dev/null || aws --endpoint-url http://minio:9000 s3 mb s3://$${MINIO_BUCKET}
+
+  airflow:
+    build: .
+    depends_on:
+      - postgres
+      - minio-init
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./schema_contract.yaml:/opt/airflow/config/schema_contract.yaml
+    command: >
+      bash -c "airflow db init &&
+      airflow users create --username admin --password admin --firstname Sushma --lastname Yadav --role Admin --email admin@example.com &&
+      (airflow scheduler &) &&
+      airflow webserver"
+
+volumes:
+  postgres_data:
+  minio_data:
